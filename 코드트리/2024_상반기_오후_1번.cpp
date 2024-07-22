@@ -1,151 +1,212 @@
 #include <bits/stdc++.h>
-
 using namespace std;
 
-int k, m;
-int ar[6][6];
-int visited[6][6];
-queue<int> que;
+int r,c,k;
+int forest[80][80];
+int exits[80][80];
+int visited[80][80];
+
+int dx[4] = {-1, 0, 1, 0};
+int dy[4] = {0, 1, 0, -1};
+
 int sum = 0;
 
-struct acient {
-    int ar[6][6];
-    int rotate;
-};
-
-acient mp;
-
-//회전 시킴
-void doRotate(int sy, int sx, int cnt) {
-    for (int i=0;i<5;i++){
-        for (int j=0;j<5;j++){
-            mp.ar[i][j] = ar[i][j];
+void init_forest() {
+    for (int i = 0; i < 80; i++) {
+        for (int j = 0; j < 80; j++) {
+            forest[i][j] = 0;
+            exits[i][j] = 0;
         }
     }
-    for (int k=0; k < cnt; k++){
-        // sy, sx를 좌측상단으로 하여 시계방향 90도 회전합니다.
-        int tmp = mp.ar[sy+0][sx+2];
-        mp.ar[sy+0][sx+2] = mp.ar[sy+0][sx+0];
-        mp.ar[sy+0][sx+0] = mp.ar[sy+2][sx+0];
-        mp.ar[sy+2][sx+0] = mp.ar[sy+2][sx+2];
-        mp.ar[sy+2][sx+2] = tmp;
-        tmp = mp.ar[sy+1][sx+2];
-        mp.ar[sy+1][sx+2] = mp.ar[sy+0][sx+1];
-        mp.ar[sy+0][sx+1] = mp.ar[sy+1][sx+0];
-        mp.ar[sy+1][sx+0] = mp.ar[sy+2][sx+1];
-        mp.ar[sy+2][sx+1] = tmp;
-    }
-    mp.rotate = cnt;
 }
 
-int doVisit() {
-    int score = 0;
-    for (int i=0;i<6;i++) {
-        for (int j=0;j<6;j++) {
-            visited[i][j] = false;
+void init_visited() {
+    for (int i = 0; i < 80; i++) {
+        for (int j = 0; j < 80; j++) {
+            visited[i][j] = 0;
+        }
+    }
+}
+
+void print_forest() {
+    for (int i = 0; i < r; i++) {
+        for (int j = 0; j < c; j++) {
+            cout << forest[i][j] <<"  ";
+        }
+        cout << "\n";
+    }   
+
+    cout << "\n";
+}
+
+void print_exit() {
+    for (int i = 0; i < r; i++) {
+        for (int j = 0; j < c; j++) {
+            cout << exits[i][j] <<"  ";
+        }
+        cout << "\n";
+    }   
+
+    cout << "\n";
+}
+
+//bfs로 탐색
+int move(int x, int y) {
+
+    int max_row = 0;
+
+    queue<pair<int, int>> q;
+
+    q.push({x, y});
+    visited[x][y] = 1;
+
+    while(!q.empty()) {
+        pair<int, int> tmp = q.front();
+        q.pop();
+
+        max_row = max(max_row, tmp.first + 1);
+
+        for (int i = 0; i < 4; i++) {
+            int nx = tmp.first + dx[i];
+            int ny = tmp.second + dy[i];
+
+            if (nx < 0 || nx >= r || ny < 0 || ny >= c) continue;
+            if (visited[nx][ny] || !forest[nx][ny]) continue;
+            if (forest[nx][ny] != forest[tmp.first][tmp.second] && !exits[tmp.first][tmp.second]) continue;
+            visited[nx][ny] = 1;
+            q.push({nx, ny});
         }
     }
 
-    int dy[4] = {0,1,0,-1}, dx[4] = {1,0,-1,0};
+    return max_row;
+}
 
-    for (int i = 0; i < 5; i++) {
-        for (int j = 0; j < 5; j++) {
-            if (!visited[i][j]) {
-                queue<pair<int, int> > q, trace;
-                q.push({i, j});
-                trace.push({i, j});
-                visited[i][j] = true;
-                while (!q.empty()) {
-                    pair<int,int> cur = q.front();
-                    q.pop();
-                    for (int k=0;k<4;k++){
-                        int ny = cur.first+dy[k], nx=cur.second+dx[k];
-                        if (0<=nx && nx<5 && 0<=ny && ny<5 && (mp.ar[ny][nx]==mp.ar[cur.first][cur.second]) && (!visited[ny][nx])) {
-                            q.push({ny, nx});
-                            trace.push({ny, nx});
-                            visited[ny][nx] = true;
+void explore_forest(int center, int exit, int gnum) {
+    int first_flag = 1;
+    //골렘 초기 위치
+    int gx = -2;
+    int gy = center;
+
+    while(1) {
+        if (gx == -2) {
+            if (!forest[0][gy]) {
+                gx++;
+            } else {
+                //좌로 회전
+                if (gy != 1 && !forest[0][gy-1]) {
+                    gy--;
+                    gx++;
+                    if (exit == 0) exit += 4;
+                    exit--;
+                    continue;
+                }
+                //우로 회전
+                if (gy + 2 != c && !forest[0][gy+1]) {
+                    gy++;
+                    gx++;
+                    if (exit == 3) exit -= 4;
+                    exit++;
+                    continue;
+                }
+
+                break;
+            }
+        } else if (gx == -1) {
+            if (!forest[gx+1][gy-1] && !forest[gx+1][gy+1] && !forest[gx+2][gy]) {
+                gx++;
+            } else {
+                //좌로 회전
+                if (gy != 1 && !forest[0][gy-1]) {
+                    int tmp_gy = gy - 1;
+                    //아래로 이동
+                    if (!forest[gx+1][tmp_gy-1] && !forest[gx+1][tmp_gy+1] && !forest[gx+2][tmp_gy]) {
+                        gy--;
+                        gx++;
+                        if (exit == 0) exit += 4;
+                        exit--;
+                        continue;
+                    }
+                }
+                //우로 회전
+                if (gy + 2 != c && !forest[0][gy+1]) {
+                    int tmp_gy = gy + 1;
+                    //아래로 이동
+                    if (!forest[gx+1][tmp_gy-1] && !forest[gx+1][tmp_gy+1] && !forest[gx+2][tmp_gy]) {
+                        gy++;
+                        gx++;
+                        if (exit == 3) exit -= 4;
+                        exit++;
+                        continue;
+                    }
+                }
+
+                break;
+            }
+        } else {
+            //아래로 이동
+            if (!forest[gx+1][gy-1] && !forest[gx+1][gy+1] && !forest[gx+2][gy]) {
+                //맨 밑에 도달
+                if (gx + 2 == r) break;
+                gx++;
+            } else {
+                //좌로 회전
+                if (gy != 1) {
+                    if (!forest[gx][gy-2] && !forest[gx+1][gy-1] && !forest[gx-1][gy-1]) {
+                        int tmp_gy = gy - 1;
+                        //아래로 이동
+                        if (gx+2 != r && !forest[gx+1][tmp_gy-1] && !forest[gx+1][tmp_gy+1] && !forest[gx+2][tmp_gy]) {
+                            gy--;
+                            gx++;
+                            if (exit == 0) exit += 4;
+                            exit--;
+                            continue;
                         }
                     }
                 }
-                if (trace.size() >= 3) {
-                    score += trace.size();
-                    while (!trace.empty()) {
-                        pair<int,int> t = trace.front(); trace.pop();
-                        mp.ar[t.first][t.second] = 0;
+                //우로 회전
+                if (gy + 2 != c && !forest[gx][gy+2] && !forest[gx+1][gy+1] && !forest[gx-1][gy+1]) {
+                    int tmp_gy = gy + 1;
+                    //아래로 이동
+                    if (gx+2 != r && !forest[gx+1][tmp_gy-1] && !forest[gx+1][tmp_gy+1] && !forest[gx+2][tmp_gy]) {
+                        gy++;
+                        gx++;
+                        if (exit == 3) exit -= 4;
+                        exit++;
+                        continue;
                     }
                 }
-            
+                //더이상 이동 x
+                break;  
             }
         }
     }
 
-    return score;
+    if (gx <= 0) {
+        init_forest();
+    }
+    else {
+        init_visited();
+        forest[gx][gy] = gnum;
+        forest[gx+1][gy] = gnum;
+        forest[gx][gy+1] = gnum;
+        forest[gx][gy-1] = gnum;
+        forest[gx-1][gy] = gnum;
+        exits[gx + dx[exit]][gy + dy[exit]] = 1;
+        sum += move(gx, gy);
+    }
 }
 
 int main() {
-    // 여기에 코드를 작성해주세요.
-    cin >> k >> m;
-
-
-    for (int i = 0; i < 5; i++) {
-        for (int j = 0; j < 5; j++) {
-            cin >> ar[i][j];
-        }
-    }
-
-    for (int i = 0; i < m; i++) {
-        int t;
-        cin >> t;
-        que.push(t);
-    }
-
-    for (int i = 0; i < k; i++) {
-        acient max_a;
-        int max_score = 0;
-        for (int k = 1; k <= 3; k++) {
-            for (int i = 0; i < 3; i++) {
-                for (int j = 0; j < 3; j++) {
-                    doRotate(j, i, k);
-                    //탐사 진행
-                    int score = doVisit();
-                    if (max_score < score) {
-                        max_score = score;
-                        max_a = mp;
-                    }
-                }
-            }
-        }
-
-        if (max_score == 0) { 
-            break;
-        }
+    cin >> r >> c >> k;
     
-        int ans = max_score;
-
-        mp = max_a;
-
-        while(1) {
-            // 채워 넣기
-            for (int i = 0; i < 5; i++) {
-                for (int j = 4; j >= 0; j--) {
-                    if (mp.ar[j][i] == 0) {
-                        mp.ar[j][i] = que.front();
-                        que.pop();
-                    }
-                }
-            }
-            max_score = doVisit();
-            if (max_score == 0) break;
-            ans += max_score;   
-        }
-
-        for (int i=0;i<5;i++){
-            for (int j=0;j<5;j++) {
-                ar[i][j] = mp.ar[i][j];
-            }
-        }
-        cout << ans << " ";
+    for (int i = 1; i <= k; i++) {
+        int a,b; 
+        cin >> a;
+        a--;
+        cin >> b;
+        explore_forest(a, b, i);
     }
+    cout << sum;
 
     return 0;
 }
